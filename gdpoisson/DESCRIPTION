@@ -1,0 +1,10 @@
+Package: gdpoisson
+Type: Package
+Title: Gamma-Difference Poisson Regression and Functions
+Version: 0.1.0
+Author: Giorgio Panizzutti
+Maintainer: The package maintainer <giorgio.panizzutti@gmail.com>
+Description: This package implements the mean-parametrized generalisation of the Poisson model described the first time by P.E. Hagmark. This model can accomodate arbitrary underdispersion for any mean in count models, maintaining the Poisson special case when theta = 1.
+License: GPL-2
+Encoding: UTF-8
+RoxygenNote: 7.3.2
