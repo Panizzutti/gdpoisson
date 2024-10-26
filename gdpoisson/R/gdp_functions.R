@@ -339,6 +339,3 @@ logLikgd <- function(k, lambda, theta) {
 }
 
 
-
-
-
