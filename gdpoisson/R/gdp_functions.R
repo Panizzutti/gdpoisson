@@ -50,6 +50,9 @@ pgdpois_scalar <- function(k, lambda, theta) {
     stop("Parameters 'lambda' and 'theta' must be positive.")
   }
 
+
+
+  #original
   kp1 <- k + 1
   if (k == 0) {
     return((kp1 - lambda) * (pgamma(lambda, shape = kp1 / theta, scale = theta, lower.tail = FALSE)) +
@@ -61,6 +64,8 @@ pgdpois_scalar <- function(k, lambda, theta) {
       (k - lambda) * (pgamma(lambda, shape = k / theta, scale = theta, lower.tail = FALSE)) -
       k * (dgamma(lambda / theta, shape = 1 + k / theta, scale = 1))
   )
+
+
 }
 
 # R/dgdpois.R
@@ -124,7 +129,9 @@ dgdpois_scalar <- function(k, lambda, theta) {
   }
 
   return(pgdpois_scalar(k, lambda, theta) - pgdpois_scalar(k - 1, lambda, theta))
-}
+
+
+  }
 
 #' Random Generation from the GD-Poisson Distribution
 #'

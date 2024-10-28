@@ -214,7 +214,7 @@ glm.gdp <- function(formula, data, method = "L-BFGS-B", max_retries = 5) {
   X <- model.matrix(formula, data)
   start_params = NULL
   # Fit the model using mle_gdppois_loglink with specified parameters
-  fit_result <- mle_gdppois_loglink(X, y, start_params = start_params, method = method, max_retries = max_retries)
+  fit_result <- mle_gdpois_loglink(X, y, start_params = start_params, method = method, max_retries = max_retries)
 
   # Store additional information
   fit_result$call <- match.call()
