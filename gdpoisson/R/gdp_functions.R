@@ -50,19 +50,18 @@ pgdpois_scalar <- function(k, lambda, theta) {
     stop("Parameters 'lambda' and 'theta' must be positive.")
   }
 
-
-
-  #original
   kp1 <- k + 1
+  #cdf in zero
   if (k == 0) {
     return((kp1 - lambda) * (pgamma(lambda, shape = kp1 / theta, scale = theta, lower.tail = FALSE)) +
              kp1 * (dgamma(lambda / theta, shape = 1 + kp1 / theta, scale = 1)))
   }
+  #cdf in k
   return(
     (kp1 - lambda) * (pgamma(lambda, shape = kp1 / theta, scale = theta, lower.tail = FALSE)) +
       kp1 * (dgamma(lambda / theta, shape = 1 + kp1 / theta, scale = 1)) -
       ((k - lambda) * (pgamma(lambda, shape = k / theta, scale = theta, lower.tail = FALSE)) +
-      k * (dgamma(lambda / theta, shape = 1 + k / theta, scale = 1)))
+         k * (dgamma(lambda / theta, shape = 1 + k / theta, scale = 1)))
   )
 
 
@@ -136,10 +135,10 @@ dgdpois_scalar <- function(k, lambda, theta) {
     return(     (kp1 - lambda) * (pgamma(lambda, shape = kp1 / theta, scale = theta, lower.tail = FALSE)) +
                   kp1 * (dgamma(lambda / theta, shape = 1 + kp1 / theta, scale = 1))
 
-                  -2*((k - lambda) * (pgamma(lambda, shape = k / theta, scale = theta, lower.tail = FALSE)) +
-                  k * (dgamma(lambda / theta, shape = 1 + k / theta, scale = 1)) )
+                -2*((k - lambda) * (pgamma(lambda, shape = k / theta, scale = theta, lower.tail = FALSE)) +
+                      k * (dgamma(lambda / theta, shape = 1 + k / theta, scale = 1)) )
 
-                )
+    )
   }
 
   km1 <- k - 1
@@ -147,11 +146,11 @@ dgdpois_scalar <- function(k, lambda, theta) {
     (kp1 - lambda) * (pgamma(lambda, shape = kp1 / theta, scale = theta, lower.tail = FALSE)) +
       kp1 * (dgamma(lambda / theta, shape = 1 + kp1 / theta, scale = 1))
 
-      -2*((k - lambda) * (pgamma(lambda, shape = k / theta, scale = theta, lower.tail = FALSE)) +
-           k * (dgamma(lambda / theta, shape = 1 + k / theta, scale = 1)))
-         +
-           (km1 - lambda) * (pgamma(lambda, shape = km1 / theta, scale = theta, lower.tail = FALSE)) +
-           km1 * (dgamma(lambda / theta, shape = 1 + km1 / theta, scale = 1))
+    -2*((k - lambda) * (pgamma(lambda, shape = k / theta, scale = theta, lower.tail = FALSE)) +
+          k * (dgamma(lambda / theta, shape = 1 + k / theta, scale = 1)))
+    +
+      (km1 - lambda) * (pgamma(lambda, shape = km1 / theta, scale = theta, lower.tail = FALSE)) +
+      km1 * (dgamma(lambda / theta, shape = 1 + km1 / theta, scale = 1))
   )
 
 

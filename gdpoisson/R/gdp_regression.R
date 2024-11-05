@@ -1,139 +1,157 @@
 
+#compute a single loglikelihood value, handling edge cases
 logLikgd_scalar <- function(k, lambda, theta) {
   # Handle zero or negative PMF values to avoid log(0) or log of negative numbers
   if (lambda == 0) {
     0
   } else {
-    p=dgdpois_scalar(k, lambda, theta)
-    if (p <= 0 | is.na(p)) {return(-147)}
+    p = dgdpois_scalar(k, lambda, theta)
+    #handles catastrophic cancellation cases
+    if (p <= 0 | is.na(p)) {
+      return(-147)
+    }
     log(p)
   }
 }
 
-
+#computes total loglikelihood for a set of parameters params, a model matrix X and the response y
 neg_log_likelihood_loglink <- function(params, X, y) {
   # Extract beta coefficients and theta
-
   p <- length(params) - 1
   betas <- params[1:p]
-  logtheta <- params[p+1]
+  logtheta <- params[p + 1]
   # Compute linear predictor and lambda
   eta <- X %*% betas
   lambda <- exp(eta)
 
-  theta <-exp(logtheta)
+  theta <- exp(logtheta)
 
-  # Use sapply to compute dgdpois for each observation
+  # Use sapply to compute the loglikelihood for each observation
   LLi <- sapply(seq_along(y), function(i) {
-    logLikgd_scalar(y[i],lambda[i],theta)
+    logLikgd_scalar(y[i], lambda[i], theta)
   })
-
   negLL <- -sum(LLi)
   return(negLL)
 }
 
-MLE_find <- function(X, y, start_params = NULL, method = "L-BFGS-B", max_retries = 5) {
-  n <- nrow(X)
-  p <- ncol(X)
 
-  # Generate initial starting values if not provided
-  generate_starting_values <- function() {
+# main optimization function, using the optim function to find the argmin of the negative loglikelihood
+MLE_find <-
+  function(X,
+           y,
+           start_params = NULL,
+           method = "L-BFGS-B",
+           max_retries = 5) {
+    n <- nrow(X)
+    p <- ncol(X)
 
-    glm_fit <- glm(y ~ X-1, family = poisson(link = "log"))
+    # Generate initial starting values if not provided
+    generate_starting_values <- function() {
+      #use Poisson as initial estimates
+      glm_fit <- glm(y ~ X - 1, family = poisson(link = "log"))
 
-    start_betas <- coef(glm_fit)
-    pearson_residuals <- residuals(glm_fit, type = "pearson")
-    start_logtheta <- log(sum(pearson_residuals^2) / (n - p))
-    c(start_betas, start_logtheta)
-  }
-
-  # Get initial estimates from the Poisson model
-  initial_estimates <- if (is.null(start_params)) {
-    generate_starting_values()
-  } else {
-    start_params
-  }
-
-  if (length(initial_estimates) != p + 1) {
-    stop("Length of start_params must be equal to number of betas plus one (theta).")
-  }
-
-  # Set lower and upper bounds
-  #lower_bounds <- c(rep(-Inf, p), -Inf)  # Theta > 0, logtheta in R
-  #upper_bounds <- c(rep(Inf, p), Inf)
-
-
-
-  # Optimization with retry mechanism
-  attempt <- 0
-  while (attempt <= max_retries-1) {
-    # Initialize var_cov_matrix and std_errors at the beginning of each attempt
-    var_cov_matrix <- NULL
-    std_errors <- rep(NA, p + 1)
-
-
-    start_params <- initial_estimates + 0.1*attempt*rnorm(p+1)
-
-    fit <- tryCatch({
-      optim(
-        par = start_params,
-        fn = neg_log_likelihood_loglink,
-        X = X,
-        y = y,
-        method = method,
-        #lower = lower_bounds,
-        #upper = upper_bounds,
-        control = list(
-          maxit = 1000,
-          parscale = abs(start_params),
-          pgtol = 1e-8,
-          REPORT = 1  # Reports progress every iteration
-        ),
-        hessian = TRUE
-      )
-    }, error = function(e) {
-      NULL
-    })
-
-    # Check if optimization was successful
-    if (!is.null(fit) && fit$convergence == 0 && is.finite(fit$value)) {
-      # Attempt to compute the variance-covariance matrix
-      if (!is.null(fit$hessian)) {
-        var_cov_matrix <- solve(fit$hessian)
-        if (!is.null(var_cov_matrix)) {
-          # Hessian inversion successful
-          std_errors <- sqrt(diag(var_cov_matrix))
-          # Optimization and Hessian inversion successful, exit loop
-          break
-        } else {
-          # Singular Hessian, retry optimization
-          if (attempt == max_retries - 1) warning("Hessian is singular. Final attempt failed.")
-        }
-      } else {
-        # Hessian not available, retry optimization
-        if (attempt == max_retries - 1) warning("Hessian not available. Final attempt failed.")
-      }
-    } else {
-      # Optimization failed, retry with new starting values
-      if (attempt == max_retries - 1) warning("Optimization failed after final attempt. Review data or model specification.")
+      start_betas <- coef(glm_fit)
+      #initial estimate of theta based on the dispersion parameter of quasipoisson
+      pearson_residuals <- residuals(glm_fit, type = "pearson")
+      start_logtheta <- log(sum(pearson_residuals ^ 2) / (n - p))
+      c(start_betas, start_logtheta)
     }
 
-    attempt <- attempt + 1
+    # Get initial estimates from the Poisson model
+    initial_estimates <- if (is.null(start_params)) {
+      generate_starting_values()
+    } else {
+      start_params
+    }
+
+    if (length(initial_estimates) != p + 1) {
+      stop("Length of start_params must be equal to number of betas plus one (theta).")
+    }
+
+
+
+    # optim function, with retry mechanism
+    attempt <- 0
+    while (attempt <= max_retries - 1) {
+      # Initialize var_cov_matrix and std_errors at the beginning of each attempt
+      var_cov_matrix <- NULL
+      std_errors <- rep(NA, p + 1)
+
+      #randomize the initial estimates for each attempt after the 1st one
+      start_params <- initial_estimates + 0.1 * attempt * rnorm(p + 1)
+
+      #find minima of the loglikelihood function
+      fit <- tryCatch({
+        optim(
+          par = start_params,
+          fn = neg_log_likelihood_loglink,
+          X = X,
+          y = y,
+          method = method,
+          #lower = lower_bounds,
+          #upper = upper_bounds,
+          control = list(
+            maxit = 1000,
+            parscale = abs(start_params),
+            pgtol = 1e-8,
+            REPORT = 500
+          ),
+          hessian = TRUE
+        )
+      }, error = function(e) {
+        NULL
+      })
+
+      # Check if optimization was successful
+      if (!is.null(fit) &&
+          fit$convergence == 0 && is.finite(fit$value)) {
+        # Compute the variance-covariance matrix
+        if (!is.null(fit$hessian)) {
+          var_cov_matrix <- solve(fit$hessian)
+          if (!is.null(var_cov_matrix)) {
+            # Hessian inversion successful
+            std_errors <- sqrt(diag(var_cov_matrix))
+            break
+          } else {
+            # Singular Hessian, retry optimization
+            if (attempt == max_retries - 1)
+              warning("Hessian is singular. Final attempt failed.")
+          }
+        } else {
+          # Hessian not available, retry optimization
+          if (attempt == max_retries - 1)
+            warning("Hessian not available. Final attempt failed.")
+        }
+      } else {
+        # Optimization failed
+        if (attempt == max_retries - 1)
+          warning("Optimization failed after final attempt. Review data or model specification.")
+      }
+
+      attempt <- attempt + 1
+    }
+
+
+    # If optimization still failed after max_retries
+    if (attempt > max_retries ||
+        is.null(fit) ||
+        fit$convergence != 0 ||
+        !is.finite(fit$value) || is.null(var_cov_matrix)) {
+      stop(
+        "Optimization failed after multiple attempts. Consider checking the data or model specification."
+      )
+    }
+
+
+    fit$std_errors = std_errors
+    fit$var_cov_matrix = var_cov_matrix
+
+    return(fit)
+
   }
 
 
-  # If optimization still failed after max_retries
-  if (attempt > max_retries || is.null(fit) || fit$convergence != 0 || !is.finite(fit$value) || is.null(var_cov_matrix)) {
-    stop("Optimization failed after multiple attempts. Consider checking the data or model specification.")
-  }
-
-  fit$std_errors= std_errors
-  fit$var_cov_matrix= var_cov_matrix
-
-  return(fit)
-
-}
-
+#this function find the fit of the current model, null model and all values related to the glm
 mle_gdpois_loglink <- function(X, y, start_params = NULL, method = "L-BFGS-B", max_retries = 5) {
   n <- nrow(X)
   p <- ncol(X)
@@ -156,7 +174,7 @@ mle_gdpois_loglink <- function(X, y, start_params = NULL, method = "L-BFGS-B", m
   nullLL=-NULLfit$value
   #meannull=mean(y)
   #nullLLi <- sapply(seq_along(y), function(i) {
-    #logLikgd_scalar(y[i],meannull,theta_est)
+  #logLikgd_scalar(y[i],meannull,theta_est)
   #})
   #nullLL= sum(nullLLi)
 
@@ -219,7 +237,7 @@ glm.gdp <- function(formula, data, method = "L-BFGS-B", max_retries = 5) {
   y <- model.response(mf)
   X <- model.matrix(formula, data)
   start_params = NULL
-  # Fit the model using mle_gdppois_loglink with specified parameters
+  # Fit the model using mle_gdpois_loglink with specified parameters
   fit_result <- mle_gdpois_loglink(X, y, start_params = start_params, method = method, max_retries = max_retries)
 
   # Store additional information
@@ -305,7 +323,6 @@ summary.glm.gdp <- function(object, ...) {
 #' @export
 print.summary.glm.gdp <- function(x, ...) {
 
-
   # Print the Call
   cat("\nCall:\n")
   print(x$call)
@@ -323,7 +340,7 @@ print.summary.glm.gdp <- function(x, ...) {
   cat("Residual deviance:", formatC(x$residual.deviance, digits = 4),
       "on", x$df.residual, "degrees of freedom\n")
 
-  # Print AIC and BIC
+  # Print AIC
   cat("AIC:", formatC(x$aic, digits = 4), "\n")
 
   # Print Number of Iterations
@@ -336,8 +353,6 @@ print.summary.glm.gdp <- function(x, ...) {
     } else {
       cat("Optimization did not converge.\n")
     }
-  } else {
-    cat("Convergence information not available.\n")
   }
 }
 
