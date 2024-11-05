@@ -98,28 +98,29 @@ MLE_find <- function(X, y, start_params = NULL, method = "L-BFGS-B", max_retries
     # Check if optimization was successful
     if (!is.null(fit) && fit$convergence == 0 && is.finite(fit$value)) {
       # Attempt to compute the variance-covariance matrix
-      if (!is.null(fit$hessian) && all(dim(fit$hessian) == c(p + 1, p + 1))) {
-        var_cov_matrix <- tryCatch(solve(fit$hessian), error = function(e) NULL)
+      if (!is.null(fit$hessian)) {
+        var_cov_matrix <- solve(fit$hessian)
         if (!is.null(var_cov_matrix)) {
           # Hessian inversion successful
           std_errors <- sqrt(diag(var_cov_matrix))
           # Optimization and Hessian inversion successful, exit loop
           break
         } else {
-          # Hessian inversion failed, retry optimization
-          warning(sprintf("Optimization attempt %d: Hessian is singular. Trying new starting values.", attempt))
+          # Singular Hessian, retry optimization
+          if (attempt == max_retries - 1) warning("Hessian is singular. Final attempt failed.")
         }
       } else {
-        # Hessian not available or incorrect dimensions, retry optimization
-        warning(sprintf("Optimization attempt %d: Hessian not available or has incorrect dimensions. Trying new starting values.", attempt))
+        # Hessian not available, retry optimization
+        if (attempt == max_retries - 1) warning("Hessian not available. Final attempt failed.")
       }
     } else {
       # Optimization failed, retry with new starting values
-      warning(sprintf("Optimization attempt %d failed. Trying new starting values.", attempt))
+      if (attempt == max_retries - 1) warning("Optimization failed after final attempt. Review data or model specification.")
     }
 
     attempt <- attempt + 1
   }
+
 
   # If optimization still failed after max_retries
   if (attempt > max_retries || is.null(fit) || fit$convergence != 0 || !is.finite(fit$value) || is.null(var_cov_matrix)) {
@@ -131,7 +132,6 @@ MLE_find <- function(X, y, start_params = NULL, method = "L-BFGS-B", max_retries
 
   return(fit)
 
-
 }
 
 mle_gdpois_loglink <- function(X, y, start_params = NULL, method = "L-BFGS-B", max_retries = 5) {
@@ -139,7 +139,9 @@ mle_gdpois_loglink <- function(X, y, start_params = NULL, method = "L-BFGS-B", m
   p <- ncol(X)
 
   fit= MLE_find(X, y,start_params=start_params, method = method, max_retries = max_retries)
+
   NULLfit= MLE_find( as.matrix(rep(1,n),ncol=1), y,start_params=start_params, method = method, max_retries = max_retries)
+
   # Extract estimated parameters
   est_params <- fit$par
   betas_est <- est_params[1:p]
@@ -147,13 +149,17 @@ mle_gdpois_loglink <- function(X, y, start_params = NULL, method = "L-BFGS-B", m
 
   logLikelihood = -fit$value
 
-  satLLi <- sapply(seq_along(y), function(i) {
-    logLikgd_scalar(y[i],y[i],theta_est)
-  })
-  saturatedLL= sum(satLLi)
+  #satLLi <- sapply(seq_along(y), function(i) {logLikgd_scalar(y[i],y[i],theta_est)})
+  saturatedLL=0 #sum(satLLi)
 
   resdeviance= 2*(saturatedLL - logLikelihood)
   nullLL=-NULLfit$value
+  #meannull=mean(y)
+  #nullLLi <- sapply(seq_along(y), function(i) {
+    #logLikgd_scalar(y[i],meannull,theta_est)
+  #})
+  #nullLL= sum(nullLLi)
+
   nulldeviance=2*(saturatedLL-nullLL)
 
   # Compile results
@@ -188,7 +194,7 @@ mle_gdpois_loglink <- function(X, y, start_params = NULL, method = "L-BFGS-B", m
 
 #' Fit a GD-Poisson Generalized Linear Model using a logarithmic link function.
 #'
-#' Fits a generalized linear model using the GD-Poisson distribution for the response variable. This function leverages maximum likelihood estimation with a log link function.
+#' Fits a generalized linear model using the GD-Poisson distribution for the response variable.
 #'
 #' @param formula An object of class \code{\link{formula}}. The model formula specifying the response and predictors.
 #' @param data A data frame containing the variables specified in the formula.
@@ -197,7 +203,7 @@ mle_gdpois_loglink <- function(X, y, start_params = NULL, method = "L-BFGS-B", m
 #' @return An object of class \code{glm.gdp} containing the fitted model results, including coefficients, fitted values, and other relevant information.
 #'
 #' @details
-#' The \code{glm.gdp} function is designed to fit a GD-Poisson generalized linear model to the provided data. By specifying \code{method}, and \code{start_params}, users can control the optimization process used in maximum likelihood estimation. This allows for greater customization and control over the fitting process, enabling adjustments based on data characteristics or specific modeling requirements.
+#' The \code{glm.gdp} function fits a GD-Poisson generalized linear model to the provided data. By specifying \code{method} users can control the optimization process used in maximum likelihood estimation.
 #'
 #' @examples
 #' # Fit a GD-Poisson model with default settings

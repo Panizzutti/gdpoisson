@@ -19,10 +19,10 @@ glm.gdp(formula, data, method = "L-BFGS-B", max_retries = 5)
 An object of class \code{glm.gdp} containing the fitted model results, including coefficients, fitted values, and other relevant information.
 }
 \description{
-Fits a generalized linear model using the GD-Poisson distribution for the response variable. This function leverages maximum likelihood estimation with a log link function.
+Fits a generalized linear model using the GD-Poisson distribution for the response variable.
 }
 \details{
-The \code{glm.gdp} function is designed to fit a GD-Poisson generalized linear model to the provided data. By specifying \code{method}, and \code{start_params}, users can control the optimization process used in maximum likelihood estimation. This allows for greater customization and control over the fitting process, enabling adjustments based on data characteristics or specific modeling requirements.
+The \code{glm.gdp} function fits a GD-Poisson generalized linear model to the provided data. By specifying \code{method} users can control the optimization process used in maximum likelihood estimation.
 }
 \examples{
 # Fit a GD-Poisson model with default settings

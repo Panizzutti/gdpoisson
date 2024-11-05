@@ -235,7 +235,7 @@ qgdpois <- function(p, lambda, theta, lower.tail = TRUE, log.p = FALSE) {
   }
 
   # Validate probabilities
-  if (any(p < 0 | p > 1, na.rm = TRUE)) {
+  if (any(p < 0 | p > 1)) {
     stop("All probabilities 'p' must be between 0 and 1.")
   }
 
@@ -271,14 +271,12 @@ qgdpois <- function(p, lambda, theta, lower.tail = TRUE, log.p = FALSE) {
     }
 
     if (current_p == 1) {
-      # Assuming the distribution is defined for all k, return Inf to indicate no finite quantile
       return(Inf)
     }
 
     k <- 0
     while (pgdpois(k, current_lambda, current_theta) < current_p) {
       k <- k + 1
-      # To prevent infinite loops in edge cases
       if (k > 1e6) {
         stop("Unable to find quantile. Please check the input parameters.")
       }
@@ -286,13 +284,6 @@ qgdpois <- function(p, lambda, theta, lower.tail = TRUE, log.p = FALSE) {
     return(k)
   })
 }
-
-
-
-
-
-
-
 
 
 
@@ -309,8 +300,6 @@ qgdpois <- function(p, lambda, theta, lower.tail = TRUE, log.p = FALSE) {
 #'
 #' @return A single numeric value representing the sum of the log-likelihoods for the provided data and parameters.
 #'
-#' @details
-#' The GD-Poisson (Poisson-Negative Zero) distribution is a generalization of the Poisson distribution that introduces arbitrary underdispersion. The log-likelihood is computed by first calculating the probability mass function (PMF) for each observed count \eqn{k} using the \code{dgdpois_scalar} function. To ensure numerical stability and avoid taking the logarithm of zero or \code{NA} values, any PMF values that are less than or equal to zero or \code{NA} are replaced with a very small positive number (\eqn{\epsilon = 1 \times 10^{-64}}).
 #'
 #'
 #' @examples
@@ -333,15 +322,6 @@ qgdpois <- function(p, lambda, theta, lower.tail = TRUE, log.p = FALSE) {
 #' log_likelihood <- logLikgd(k_obs, lambda, theta)
 #' print(log_likelihood)
 #'
-#' # Example with invalid input lengths (should throw an error)
-#' tryCatch({
-#'   k_obs <- 0:5
-#'   lambda <- c(2, 3)  # Length 2
-#'   theta <- 1          # Length 1
-#'   log_likelihood <- logLikgd(k_obs, lambda, theta)
-#' }, error = function(e) {
-#'   message("Error: ", e$message)
-#' })
 #'
 #' @export
 logLikgd <- function(k, lambda, theta) {
